@@ -7,35 +7,39 @@
 :root{--bg:#100e0c;--panel:#26221c;--line:#4a4436;--ink:#e8e2d5;--sub:#9c9484;--gold:#d4af6a;--goldbright:#f0cf8a;--blue:#5aa0ff;--red:#ff5a5a;--green:#6fdd8b;--grey:#9c9484}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:radial-gradient(ellipse at 50% -20%,#2a241a 0%,var(--bg) 55%);color:var(--ink);font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:14px 12px 40px}
-h1{font-size:1.1rem;letter-spacing:.25em;margin:6px 0 2px;color:var(--gold);text-shadow:0 0 10px rgba(212,175,106,.35)}
+/* 0715-v3收斂輪:標題縮成一行小字,把視窗讓給道具欄當畫面主角;副標搬進設定裡 */
+h1{font-size:.82rem;letter-spacing:.15em;margin:4px 0 2px;color:var(--gold);text-shadow:0 0 8px rgba(212,175,106,.3)}
 .sub{font-size:.7rem;color:var(--sub);margin-bottom:4px;text-align:center}
-#nightHint{display:none;font-size:.72rem;color:var(--gold);margin-bottom:10px;text-align:center}
+.sub.insettings{margin:0 0 8px;text-align:left}
+#nightHint{display:none;font-size:.72rem;color:var(--gold);margin-bottom:6px;text-align:center}
 
 /* ===== 道具欄視窗本體 =====
    0715-v3改版:CEO驗收退回「結構對了質感不到位」——原本只有細金繩+黑底,像網頁元件。
    這輪補「石材外框」:invwindow=厚重石材斜面(多層box-shadow做bevel+repeating-linear-gradient做石紋),
-   goldring=內縮一層的金繩內框,invgrid以下才是黑格子矩陣。 */
-.invwrap{display:flex;gap:6px;align-items:stretch;width:100%;max-width:380px}
+   goldring=內縮一層的金繩內框,invgrid以下才是黑格子矩陣。
+   0715-v3收斂輪:色溫全錯改正——原版是冷灰石材,金只是內圈細繩紋,外框/格線/工具列全部從暖咖啡金改成冷灰(帶一點藍)。 */
+.invwrap{display:flex;gap:6px;align-items:stretch;width:92vw;max-width:460px}
 .invwindow{flex:1;position:relative;border-radius:8px;padding:16px 14px 12px;
   background:
     repeating-linear-gradient(125deg,rgba(255,255,255,.05) 0 2px,rgba(0,0,0,.09) 2px 4px),
-    linear-gradient(135deg,#8f8c80 0%,#5c584c 30%,#3e3b33 55%,#221f1d 100%);
+    linear-gradient(135deg,#6b6d72 0%,#4a4c52 30%,#34363b 55%,#26272b 100%);
   box-shadow:
-    inset 0 2px 1px rgba(255,255,255,.45),
-    inset 2px 0 1px rgba(255,255,255,.22),
+    inset 0 2px 1px rgba(255,255,255,.4),
+    inset 2px 0 1px rgba(255,255,255,.2),
     inset 0 -3px 2px rgba(0,0,0,.6),
     inset -3px 0 2px rgba(0,0,0,.55),
     0 8px 24px rgba(0,0,0,.65)}
 /* 石材外框內側再切一道暗溝,加強石塊的厚度堆疊感 */
 .invwindow::before{content:'';position:absolute;inset:6px;border-radius:5px;
   box-shadow:inset 0 0 0 2px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.15);pointer-events:none}
+/* 金繩紋是全視窗「唯一的金」,收細成2-3px的內框 */
 .goldring{position:relative;border-radius:3px;padding:5px;background:#050505;
-  border:5px solid transparent;
-  border-image:repeating-linear-gradient(45deg,#e8c988 0 3px,#8a6a2a 3px 6px,#5a4318 6px 8px) 10;
+  border:3px solid transparent;
+  border-image:repeating-linear-gradient(45deg,#e8c988 0 3px,#8a6a2a 3px 6px,#5a4318 6px 8px) 6;
   box-shadow:inset 0 0 0 2px #000}
 .invgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:#000}
 .cell{position:relative;aspect-ratio:1;background:#100f0c;display:flex;align-items:center;justify-content:center;overflow:hidden;
-  border-top:3px solid #6e6a5e;border-left:3px solid #625e52;border-bottom:3px solid #100f0b;border-right:3px solid #17150f}
+  border-top:3px solid #63656b;border-left:3px solid #585a60;border-bottom:3px solid #141518;border-right:3px solid #1a1b1f}
 .cell.empty{cursor:default}
 .cell.scrollcell,.cell.equipcell{cursor:pointer}
 .cell img{width:76%;height:76%;object-fit:contain;pointer-events:none}
@@ -70,15 +74,15 @@ h1{font-size:1.1rem;letter-spacing:.25em;margin:6px 0 2px;color:var(--gold);text
 /* 底部工具列(P/垃圾桶/%/鎖) */
 .toolbar{display:flex;gap:6px;margin-top:8px;justify-content:center}
 .toolbtn{flex:1;max-width:58px;aspect-ratio:1;border-radius:6px;
-  background:linear-gradient(145deg,#605c50,#26241e);
-  border-top:2px solid #86816f;border-left:2px solid #736e5e;border-bottom:2px solid #131109;border-right:2px solid #191710;
+  background:linear-gradient(145deg,#5c5e64,#232427);
+  border-top:2px solid #82858c;border-left:2px solid #6f7278;border-bottom:2px solid #101114;border-right:2px solid #17181b;
   color:var(--sub);font-size:1.05rem;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .toolbtn:active{transform:scale(.93)}
 .toolbtn.active{color:var(--goldbright);border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold),0 0 8px rgba(212,175,106,.5)}
 
 /* 右側裝飾捲軸條(純裝飾,仿截圖右側金屬杆) */
 .sidebar{width:16px;background:linear-gradient(90deg,#2a2a2e,#1a1a1c);border-radius:3px;position:relative;flex:none}
-.sidebar::before{content:'';position:absolute;left:50%;top:6%;bottom:10%;width:5px;transform:translateX(-50%);background:linear-gradient(180deg,#e8c988,#8a6a2a,#e8c988,#8a6a2a);border-radius:3px}
+.sidebar::before{content:'';position:absolute;left:50%;top:6%;bottom:10%;width:5px;transform:translateX(-50%);background:linear-gradient(180deg,#8a8d93,#4a4c52,#8a8d93,#4a4c52);border-radius:3px}
 .sidebar::after{content:'';position:absolute;left:50%;bottom:4%;width:11px;height:11px;transform:translateX(-50%);background:radial-gradient(circle at 35% 35%,#5a5a5e,#141416);border-radius:50%;border:1px solid #0a0a0a}
 
 /* 統計移到視窗外,縮小 */
@@ -86,12 +90,12 @@ h1{font-size:1.1rem;letter-spacing:.25em;margin:6px 0 2px;color:var(--gold);text
 .metarow b{color:var(--gold)}
 
 /* 次要按鈕 */
-.btnrow2{display:flex;gap:8px;width:100%;max-width:380px;margin-top:6px}
+.btnrow2{display:flex;gap:8px;width:92vw;max-width:460px;margin-top:6px}
 button.ghost2{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:9px 6px;font-size:.82rem;font-family:inherit;cursor:pointer}
 button.ghost2:active{transform:scale(.96)}
 
 /* 摺疊區塊(記錄/設定) */
-.card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px}
+.card{width:92vw;max-width:460px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px}
 details summary{cursor:pointer;color:var(--sub);font-size:.8rem;margin-bottom:6px}
 #log{max-height:160px;overflow-y:auto;font-size:.78rem;line-height:1.85}
 #log .ok{color:var(--blue)}#log .crit{color:var(--goldbright)}#log .bad{color:var(--red)}#log .born{color:var(--green)}#log .keep{color:var(--grey)}
@@ -120,7 +124,6 @@ button#btnReport{width:100%;background:var(--panel);border:1px solid var(--line)
 #grave{font-size:.8rem;color:var(--sub);line-height:1.9}
 </style></head><body>
 <h1>⚔ 點裝模擬器</h1>
-<div class="sub">官方機率原始移植・過安定後有成功/維持/蒸發三種結果|純懷舊自娛,與任何遊戲公司無關</div>
 <div id="nightHint"></div>
 
 <div class="invwrap">
@@ -149,11 +152,12 @@ button#btnReport{width:100%;background:var(--panel);border:1px solid var(--line)
       </div>
       <div class="cell scrollcell" data-slot="curse" id="cellCurse">
         <svg class="scrollicon" viewBox="0 0 20 24" shape-rendering="crispEdges">
-          <rect x="3" y="1" width="14" height="3" fill="#2d0a18"/><rect x="3" y="20" width="14" height="3" fill="#2d0a18"/>
-          <rect x="1" y="3" width="2" height="18" fill="#1a0810"/><rect x="17" y="3" width="2" height="18" fill="#1a0810"/>
-          <rect x="3" y="4" width="14" height="16" fill="#4a1428"/>
-          <rect x="6" y="8" width="2" height="2" fill="#ff3050"/><rect x="12" y="8" width="2" height="2" fill="#ff3050"/>
-          <rect x="6" y="13" width="8" height="1" fill="#ff3050"/><rect x="9" y="15" width="2" height="3" fill="#ff3050"/>
+          <rect x="3" y="1" width="14" height="3" fill="#241019"/><rect x="3" y="20" width="14" height="3" fill="#241019"/>
+          <rect x="1" y="3" width="2" height="18" fill="#180a10"/><rect x="17" y="3" width="2" height="18" fill="#180a10"/>
+          <rect x="3" y="4" width="14" height="16" fill="#3a1f2e"/>
+          <polygon points="6,7 9,7 7,10 9,10 6,14 7,11 5,11" fill="#8f2440"/>
+          <polygon points="13,7 16,7 14,10 16,10 13,14 14,11 12,11" fill="#8f2440"/>
+          <rect x="8" y="16" width="4" height="1" fill="#6e1a30"/>
         </svg>
         <span class="cellCount"><span id="cntCurse">0</span></span>
       </div>
@@ -192,6 +196,7 @@ button#btnReport{width:100%;background:var(--panel);border:1px solid var(--line)
 
 <div class="card">
   <details><summary>⚙ 設定</summary>
+    <div class="sub insettings">官方機率原始移植・過安定後有成功/維持/蒸發三種結果|純懷舊自娛,與任何遊戲公司無關</div>
     <button id="btnReport">🚩 這件裝備的名字翻譯怪怪的,回報一下</button>
     <div id="reportList" style="font-size:.7rem;color:var(--sub);margin-top:8px;line-height:1.6">尚未回報任何譯名問題。</div>
   </details>
