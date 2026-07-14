@@ -1,0 +1,330 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>點裝模擬器</title>
+<style>
+:root{--bg:#0d0b14;--panel:#1a1626;--line:#332b4d;--ink:#e8e2f5;--sub:#9a8fc0;--gold:#f5c542;--blue:#5aa0ff;--red:#ff5a5a;--green:#6fdd8b;--grey:#9a9aa8}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:radial-gradient(ellipse at 50% -10%,#241d3a 0%,var(--bg) 60%);color:var(--ink);font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:14px 12px 40px}
+h1{font-size:1.15rem;letter-spacing:.25em;margin:6px 0 2px;color:var(--gold);text-shadow:0 0 12px rgba(245,197,66,.35)}
+.sub{font-size:.72rem;color:var(--sub);margin-bottom:4px;text-align:center}
+#nightHint{display:none;font-size:.72rem;color:#c9a8ff;margin-bottom:10px;text-align:center}
+.card{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+/* 裝備區 */
+#itemBox{text-align:center;padding:22px 14px;position:relative;overflow:hidden}
+#itemName{font-size:1.5rem;font-weight:700;letter-spacing:.06em;transition:.2s}
+#itemName.t1{color:#cfd6e4}
+#itemName.t2{color:var(--blue);text-shadow:0 0 14px rgba(90,160,255,.6)}
+#itemName.t3{color:var(--gold);text-shadow:0 0 18px rgba(245,197,66,.75)}
+#itemName.t4{color:#ff9df5;text-shadow:0 0 22px rgba(255,157,245,.85)}
+#itemMeta{font-size:.78rem;color:var(--sub);margin-top:6px}
+#itemBox.shake{animation:shake .5s}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+#itemBox.channelFlip{animation:flip .7s}
+@keyframes flip{0%{filter:none}30%{filter:hue-rotate(180deg) brightness(1.3)}70%{filter:hue-rotate(320deg)}100%{filter:none}}
+#flash{position:absolute;inset:0;pointer-events:none;opacity:0;border-radius:14px}
+#flash.ok{background:radial-gradient(circle,rgba(120,180,255,.95),transparent 70%);animation:pop .7s}
+#flash.crit{background:radial-gradient(circle,rgba(255,220,120,.95),transparent 70%);animation:pop .9s}
+#flash.bad{background:radial-gradient(circle,rgba(255,90,90,.9),transparent 70%);animation:pop .8s}
+#flash.keep{background:radial-gradient(circle,rgba(160,160,175,.85),transparent 70%);animation:pop .8s}
+@keyframes pop{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
+/* 按鈕 */
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+button{flex:1;min-width:96px;background:#241d3a;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px 6px;font-size:.92rem;font-family:inherit;cursor:pointer;transition:.15s}
+button:active{transform:scale(.96)}
+button.main{background:linear-gradient(180deg,#3a2f63,#241d3a);border-color:#5a4a99;font-weight:700}
+button.bless{background:linear-gradient(180deg,#4a3a1a,#2c2210);border-color:#8a6a2a;color:var(--gold)}
+button.curse{background:linear-gradient(180deg,#3a1a2a,#22101c);border-color:#8a2a5a;color:#ff8fc4}
+button.ghost{background:#141021}
+button:disabled{opacity:.35;pointer-events:none}
+.blabel{display:block}
+.pct{display:block;font-size:.66rem;opacity:.85;margin-top:2px;font-weight:400}
+/* 訊息 */
+#msg{min-height:1.6em;text-align:center;font-size:1rem;font-weight:700;margin:4px 0 8px}
+#msg.ok{color:var(--blue)}#msg.crit{color:var(--gold)}#msg.bad{color:var(--red)}#msg.info{color:var(--sub);font-weight:400}#msg.keep{color:var(--grey)}
+/* 統計 */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;font-variant-numeric:tabular-nums}
+.stats b{display:block;font-size:1.15rem}
+.stats span{font-size:.68rem;color:var(--sub)}
+/* 裝備選擇器 */
+.kindTabs{display:flex;gap:8px;margin-bottom:8px}
+.kindTab{flex:1;padding:9px;border-radius:8px;background:#141021;border:1px solid var(--line);color:var(--sub);font-size:.85rem}
+.kindTab.active{background:linear-gradient(180deg,#3a2f63,#241d3a);color:var(--ink);border-color:#5a4a99;font-weight:700}
+.typeChips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.chip{padding:5px 10px;border-radius:14px;background:#141021;border:1px solid var(--line);color:var(--sub);font-size:.72rem;flex:none;min-width:0}
+.chip.active{background:#332b4d;color:var(--ink);border-color:#5a4a99}
+.itemGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:340px;overflow-y:auto;padding-right:2px}
+.pickitem{background:#141021;border:1px solid var(--line);border-radius:10px;padding:8px 4px;text-align:center;cursor:pointer}
+.pickitem:active{transform:scale(.95)}
+.pickitem.sel{border-color:var(--gold)}
+.pickitem img{width:40px;height:40px;object-fit:contain;display:block;margin:0 auto}
+.ifallback{width:40px;height:40px;margin:0 auto;background:#241d3a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;color:var(--sub)}
+.pname{font-size:.68rem;margin-top:4px;line-height:1.2;height:2.3em;overflow:hidden}
+.psafe{font-size:.6rem;color:var(--sub)}
+/* 選裝(舊區塊沿用之樣式，記錄/墓園) */
+select,input[type=number],input[type=text]{background:#141021;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:9px;font-size:.9rem;font-family:inherit;width:100%}
+.row{display:flex;gap:8px;margin-top:8px}
+.row>*{flex:1}
+label{font-size:.72rem;color:var(--sub)}
+/* 記錄 */
+#log{max-height:180px;overflow-y:auto;font-size:.8rem;line-height:1.9}
+#log .ok{color:var(--blue)}#log .crit{color:var(--gold)}#log .bad{color:var(--red)}#log .born{color:var(--green)}#log .keep{color:var(--grey)}
+#grave{font-size:.78rem;color:var(--sub);line-height:1.8}
+details summary{cursor:pointer;color:var(--sub);font-size:.82rem;margin-bottom:6px}
+.best{color:var(--gold);font-weight:700}
+</style></head><body>
+<h1>⚔ 點裝模擬器</h1>
+<div class="sub">官方機率原始移植・過安定後有成功/維持/蒸發三種結果|純懷舊自娛,與任何遊戲公司無關</div>
+<div id="nightHint"></div>
+
+<div class="card" id="itemBox">
+  <div id="flash"></div>
+  <div id="itemName" class="t1">—</div>
+  <div id="itemMeta"></div>
+</div>
+
+<div id="msg" class="info">從下面「裝備選擇」挑一件開始</div>
+
+<div class="card">
+  <div class="btnrow">
+    <button class="main" id="btnWhite"><span class="blabel">白卷</span><span class="pct">—</span></button>
+    <button class="bless" id="btnBless"><span class="blabel">祝福卷</span><span class="pct">—</span></button>
+    <button class="curse" id="btnCurse"><span class="blabel">詛咒卷</span><span class="pct">—</span></button>
+  </div>
+  <div class="btnrow" style="margin-top:8px">
+    <button class="ghost" id="btnChannel">🔄 換頻道</button>
+    <button class="ghost" id="btnAgain">再拿一件(同款)</button>
+  </div>
+</div>
+
+<div class="card stats">
+  <div><b id="sWhite">0</b><span>白卷消耗</span></div>
+  <div><b id="sBless">0</b><span>祝福卷消耗</span></div>
+  <div><b id="sDead">0</b><span>蒸發件數</span></div>
+  <div><b id="sBest" class="best">+0</b><span>歷史最高</span></div>
+</div>
+
+<div class="card">
+  <details open><summary>裝備選擇</summary>
+    <div class="kindTabs">
+      <button class="kindTab active" data-kind="w">⚔ 武器</button>
+      <button class="kindTab" data-kind="a">🛡 防具</button>
+    </div>
+    <div class="typeChips" id="typeChips"></div>
+    <div class="itemGrid" id="itemGrid"></div>
+  </details>
+</div>
+
+<div class="card">
+  <details><summary>衝裝記錄</summary><div id="log"></div></details>
+  <details><summary>🪦 蒸發墓園</summary><div id="grave">還沒有犧牲者。</div></details>
+</div>
+
+<div class="card">
+  <details><summary>⚙ 設定</summary>
+    <button id="btnReport" style="width:100%">🚩 這件裝備的名字翻譯怪怪的,回報一下</button>
+    <div id="reportList" style="font-size:.7rem;color:var(--sub);margin-top:8px;line-height:1.6">尚未回報任何譯名問題。</div>
+  </details>
+</div>
+
+<script>
+// ===== 官方機率表(逐階移植自 docs/lineage-nc-official-prob.json，經 scripts/build-prob.js 壓縮，數字未經任何修改) =====
+// 結構: PROB[分類][卷軸種類][目前階數] = [[結果類型,目標階(蒸發時為null),機率%], ...]
+const PROB = {"weapon":{"white":{"0":[["ok",1,100]],"1":[["ok",2,100]],"2":[["ok",3,100]],"3":[["ok",4,100]],"4":[["ok",5,100]],"5":[["ok",6,100]],"6":[["ok",7,33.3333],["die",null,66.6667]],"7":[["ok",8,33.3333],["die",null,66.6667]],"8":[["ok",9,33.3333],["die",null,66.6667]],"9":[["ok",10,0.9009],["keep",9,32.4324],["die",null,66.6667]],"10":[["ok",11,0.813],["keep",10,32.5203],["die",null,66.6667]],"11":[["ok",12,0.7407],["keep",11,32.5926],["die",null,66.6667]],"-5":[["ok",-4,100]],"-4":[["ok",-3,100]],"-3":[["ok",-2,100]],"-2":[["ok",-1,100]],"-1":[["ok",0,100]]},"bless":{"0":[["ok",1,33.3333],["ok",2,33.3333],["ok",3,33.3333]],"1":[["ok",2,33.3333],["ok",3,33.3333],["ok",4,33.3333]],"2":[["ok",3,33.3333],["ok",4,33.3333],["ok",5,33.3333]],"3":[["ok",4,50],["ok",5,50]],"4":[["ok",5,50],["ok",6,50]],"5":[["ok",6,50],["ok",7,50]],"6":[["ok",7,33.3333],["die",null,66.6667]],"7":[["ok",8,33.3333],["die",null,66.6667]],"8":[["ok",9,33.3333],["die",null,66.6667]],"9":[["ok",10,3.3333],["keep",9,30],["die",null,66.6667]],"10":[["ok",11,3.0303],["keep",10,30.303],["die",null,66.6667]],"11":[["ok",12,2.7778],["keep",11,30.5556],["die",null,66.6667]],"-5":[["ok",-4,33.3333],["ok",-3,33.3333],["ok",-2,33.3333]],"-4":[["ok",-3,33.3333],["ok",-2,33.3333],["ok",-1,33.3333]],"-3":[["ok",-2,33.3333],["ok",-1,33.3333],["ok",0,33.3333]],"-2":[["ok",-1,33.3333],["ok",0,33.3333],["ok",1,33.3333]],"-1":[["ok",0,33.3333],["ok",1,33.3333],["ok",2,33.3333]]},"curse":{"0":[["ok",-1,100]],"1":[["ok",0,100]],"2":[["ok",1,100]],"3":[["ok",2,100]],"4":[["ok",3,100]],"5":[["ok",4,100]],"6":[["ok",5,100]],"7":[["ok",6,100]],"8":[["ok",7,100]],"9":[["ok",8,100]],"-4":[["ok",-5,100]],"-3":[["ok",-4,100]],"-2":[["ok",-3,100]],"-1":[["ok",-2,100]]}},"armor":{"white":{"0":[["ok",1,100]],"1":[["ok",2,100]],"2":[["ok",3,100]],"3":[["ok",4,100]],"4":[["ok",5,25],["die",null,75]],"5":[["ok",6,20],["die",null,80]],"6":[["ok",7,16.6667],["die",null,83.3333]],"7":[["ok",8,14.2857],["die",null,85.7143]],"8":[["ok",9,12.5],["die",null,87.5]],"9":[["ok",10,0.3003],["keep",9,10.8108],["die",null,88.8889]],"10":[["ok",11,0.2439],["keep",10,9.7561],["die",null,90]],"11":[["ok",12,0.202],["keep",11,8.8889],["die",null,90.9091]],"-5":[["ok",-4,100]],"-4":[["ok",-3,100]],"-3":[["ok",-2,100]],"-2":[["ok",-1,100]],"-1":[["ok",0,100]]},"bless":{"0":[["ok",1,33.3333],["ok",2,33.3333],["ok",3,33.3333]],"1":[["ok",2,33.3333],["ok",3,33.3333],["ok",4,33.3333]],"2":[["ok",3,33.3333],["ok",4,33.3333],["ok",5,33.3333]],"3":[["ok",4,50],["ok",5,50]],"4":[["ok",5,12.5],["ok",6,12.5],["die",null,75]],"5":[["ok",6,10],["ok",7,10],["die",null,80]],"6":[["ok",7,16.6667],["die",null,83.3333]],"7":[["ok",8,14.2857],["die",null,85.7143]],"8":[["ok",9,12.5],["die",null,87.5]],"9":[["ok",10,1.1111],["keep",9,10],["die",null,88.8889]],"10":[["ok",11,0.9091],["keep",10,9.0909],["die",null,90]],"11":[["ok",12,0.7576],["keep",11,8.3333],["die",null,90.9091]],"-5":[["ok",-4,33.3333],["ok",-3,33.3333],["ok",-2,33.3333]],"-4":[["ok",-3,33.3333],["ok",-2,33.3333],["ok",-1,33.3333]],"-3":[["ok",-2,33.3333],["ok",-1,33.3333],["ok",0,33.3333]],"-2":[["ok",-1,33.3333],["ok",0,33.3333],["ok",1,33.3333]],"-1":[["ok",0,33.3333],["ok",1,33.3333],["ok",2,33.3333]]},"curse":{"0":[["ok",-1,100]],"1":[["ok",0,100]],"2":[["ok",1,100]],"3":[["ok",2,100]],"4":[["ok",3,100]],"5":[["ok",4,100]],"6":[["ok",5,100]],"7":[["ok",6,100]],"8":[["ok",7,100]],"9":[["ok",8,100]],"-4":[["ok",-5,100]],"-3":[["ok",-4,100]],"-2":[["ok",-3,100]],"-1":[["ok",-2,100]]}},"boneWeapon":{"white":{"0":[["ok",1,33.3333],["die",null,66.6667]],"1":[["ok",2,33.3333],["die",null,66.6667]],"2":[["ok",3,33.3333],["die",null,66.6667]],"3":[["ok",4,33.3333],["die",null,66.6667]],"4":[["ok",5,33.3333],["die",null,66.6667]],"5":[["ok",6,33.3333],["die",null,66.6667]],"6":[["ok",7,33.3333],["die",null,66.6667]],"7":[["ok",8,33.3333],["die",null,66.6667]],"8":[["ok",9,33.3333],["die",null,66.6667]],"9":[["ok",10,0.9009],["keep",9,32.4324],["die",null,66.6667]],"10":[["ok",11,0.813],["keep",10,32.5203],["die",null,66.6667]],"11":[["ok",12,0.7407],["keep",11,32.5926],["die",null,66.6667]],"-5":[["ok",-4,33.3333],["die",null,66.6667]],"-4":[["ok",-3,33.3333],["die",null,66.6667]],"-3":[["ok",-2,33.3333],["die",null,66.6667]],"-2":[["ok",-1,33.3333],["die",null,66.6667]],"-1":[["ok",0,33.3333],["die",null,66.6667]]},"bless":{"0":[["ok",1,11.1111],["ok",2,11.1111],["ok",3,11.1111],["die",null,66.6667]],"1":[["ok",2,11.1111],["ok",3,11.1111],["ok",4,11.1111],["die",null,66.6667]],"2":[["ok",3,11.1111],["ok",4,11.1111],["ok",5,11.1111],["die",null,66.6667]],"3":[["ok",4,16.6667],["ok",5,16.6667],["die",null,66.6667]],"4":[["ok",5,16.6667],["ok",6,16.6667],["die",null,66.6667]],"5":[["ok",6,16.6667],["ok",7,16.6667],["die",null,66.6667]],"6":[["ok",7,33.3333],["die",null,66.6667]],"7":[["ok",8,33.3333],["die",null,66.6667]],"8":[["ok",9,33.3333],["die",null,66.6667]],"9":[["ok",10,3.3333],["keep",9,30],["die",null,66.6667]],"10":[["ok",11,3.0303],["keep",10,30.303],["die",null,66.6667]],"11":[["ok",12,2.7778],["keep",11,30.5556],["die",null,66.6667]],"-5":[["ok",-4,11.1111],["ok",-3,11.1111],["ok",-2,11.1111],["die",null,66.6667]],"-4":[["ok",-3,11.1111],["ok",-2,11.1111],["ok",-1,11.1111],["die",null,66.6667]],"-3":[["ok",-2,11.1111],["ok",-1,11.1111],["ok",0,11.1111],["die",null,66.6667]],"-2":[["ok",-1,11.1111],["ok",0,11.1111],["ok",1,11.1111],["die",null,66.6667]],"-1":[["ok",0,11.1111],["ok",1,11.1111],["ok",2,11.1111],["die",null,66.6667]]},"curse":{"0":[["ok",-1,100]],"1":[["ok",0,100]],"2":[["ok",1,100]],"3":[["ok",2,100]],"4":[["ok",3,100]],"5":[["ok",4,100]],"6":[["ok",5,100]],"7":[["ok",6,100]],"8":[["ok",7,100]],"9":[["ok",8,100]],"-4":[["ok",-5,100]],"-3":[["ok",-4,100]],"-2":[["ok",-3,100]],"-1":[["ok",-2,100]]}},"boneArmor":{"white":{"0":[["ok",1,50],["die",null,50]],"1":[["ok",2,33.3333],["die",null,66.6667]],"2":[["ok",3,25],["die",null,75]],"3":[["ok",4,20],["die",null,80]],"4":[["ok",5,16.6667],["die",null,83.3333]],"5":[["ok",6,14.2857],["die",null,85.7143]],"6":[["ok",7,12.5],["die",null,87.5]],"7":[["ok",8,11.1111],["die",null,88.8889]],"8":[["ok",9,10],["die",null,90]],"9":[["ok",10,0.2457],["keep",9,8.8452],["die",null,90.9091]],"10":[["ok",11,0.2033],["keep",10,8.1301],["die",null,91.6667]],"11":[["ok",12,0.1709],["keep",11,7.5214],["die",null,92.3077]],"-5":[["ok",-4,100]],"-4":[["ok",-3,100]],"-3":[["ok",-2,100]],"-2":[["ok",-1,100]],"-1":[["ok",0,100]]},"bless":{"0":[["ok",1,50],["die",null,50]],"1":[["ok",2,33.3333],["die",null,66.6667]],"2":[["ok",3,25],["die",null,75]],"3":[["ok",4,20],["die",null,80]],"4":[["ok",5,16.6667],["die",null,83.3333]],"5":[["ok",6,14.2857],["die",null,85.7143]],"6":[["ok",7,12.5],["die",null,87.5]],"7":[["ok",8,11.1111],["die",null,88.8889]],"8":[["ok",9,10],["die",null,90]],"9":[["ok",10,0.9091],["keep",9,8.1818],["die",null,90.9091]],"10":[["ok",11,0.7576],["keep",10,7.5758],["die",null,91.6667]],"11":[["ok",12,0.641],["keep",11,7.0513],["die",null,92.3077]],"-5":[["ok",-4,100]],"-4":[["ok",-3,100]],"-3":[["ok",-2,100]],"-2":[["ok",-1,100]],"-1":[["ok",0,100]]},"curse":{"0":[["ok",-1,100]],"1":[["ok",0,100]],"2":[["ok",1,100]],"3":[["ok",2,100]],"4":[["ok",3,100]],"5":[["ok",4,100]],"6":[["ok",5,100]],"7":[["ok",6,100]],"8":[["ok",7,100]],"9":[["ok",8,100]],"-4":[["ok",-5,100]],"-3":[["ok",-4,100]],"-2":[["ok",-3,100]],"-1":[["ok",-2,100]]}},"fairyArmor":{"white":{"0":[["ok",1,100]],"1":[["ok",2,100]],"2":[["ok",3,100]],"3":[["ok",4,100]],"4":[["ok",5,100]],"5":[["ok",6,100]],"6":[["ok",7,16.6667],["die",null,83.3333]],"7":[["ok",8,14.2857],["die",null,85.7143]],"8":[["ok",9,12.5],["die",null,87.5]],"9":[["ok",10,0.3003],["keep",9,10.8108],["die",null,88.8889]],"10":[["ok",11,0.2439],["keep",10,9.7561],["die",null,90]],"11":[["ok",12,0.202],["keep",11,8.8889],["die",null,90.9091]],"-5":[["ok",-4,100]],"-4":[["ok",-3,100]],"-3":[["ok",-2,100]],"-2":[["ok",-1,100]],"-1":[["ok",0,100]]},"bless":{"0":[["ok",1,33.3333],["ok",2,33.3333],["ok",3,33.3333]],"1":[["ok",2,33.3333],["ok",3,33.3333],["ok",4,33.3333]],"2":[["ok",3,33.3333],["ok",4,33.3333],["ok",5,33.3333]],"3":[["ok",4,50],["ok",5,50]],"4":[["ok",5,50],["ok",6,50]],"5":[["ok",6,50],["ok",7,50]],"6":[["ok",7,16.6667],["die",null,83.3333]],"7":[["ok",8,14.2857],["die",null,85.7143]],"8":[["ok",9,12.5],["die",null,87.5]],"9":[["ok",10,1.1111],["keep",9,10],["die",null,88.8889]],"10":[["ok",11,0.9091],["keep",10,9.0909],["die",null,90]],"11":[["ok",12,0.7576],["keep",11,8.3333],["die",null,90.9091]],"-5":[["ok",-4,33.3333],["ok",-3,33.3333],["ok",-2,33.3333]],"-4":[["ok",-3,33.3333],["ok",-2,33.3333],["ok",-1,33.3333]],"-3":[["ok",-2,33.3333],["ok",-1,33.3333],["ok",0,33.3333]],"-2":[["ok",-1,33.3333],["ok",0,33.3333],["ok",1,33.3333]],"-1":[["ok",0,33.3333],["ok",1,33.3333],["ok",2,33.3333]]},"curse":{"0":[["ok",-1,100]],"1":[["ok",0,100]],"2":[["ok",1,100]],"3":[["ok",2,100]],"4":[["ok",3,100]],"5":[["ok",4,100]],"6":[["ok",5,100]],"7":[["ok",6,100]],"8":[["ok",7,100]],"9":[["ok",8,100]],"-4":[["ok",-5,100]],"-3":[["ok",-4,100]],"-2":[["ok",-3,100]],"-1":[["ok",-2,100]]}}};
+
+// ===== 裝備庫(取自 docs/lineage-items.json,只留「可強化」的190件;icon為null者用文字卡代替) =====
+const ITEMS = [{"id":1,"n":"亞連","kind":"w","type":"blunt","typeLabel":"鈍器","cat":"weapon","safe":6,"icon":1},{"id":2,"n":"武士刀","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":2},{"id":3,"n":"長劍","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":3},{"id":4,"n":"斧","kind":"w","type":"blunt","typeLabel":"鈍器","cat":"weapon","safe":6,"icon":4},{"id":6,"n":"雙手劍","kind":"w","type":"tohandsword","typeLabel":"雙手劍","cat":"weapon","safe":6,"icon":null},{"id":8,"n":"釘錘","kind":"w","type":"blunt","typeLabel":"鈍器","cat":"weapon","safe":6,"icon":8},{"id":11,"n":"弓","kind":"w","type":"bow","typeLabel":"弓","cat":"weapon","safe":6,"icon":11},{"id":12,"n":"矛","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":null},{"id":13,"n":"戰斧","kind":"w","type":"blunt","typeLabel":"鈍器","cat":"weapon","safe":6,"icon":13},{"id":31,"n":"巴迪須","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":31},{"id":32,"n":"柴刀","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":32},{"id":33,"n":"精靈弓","kind":"w","type":"bow","typeLabel":"弓","cat":"weapon","safe":6,"icon":33},{"id":34,"n":"歐西斯弓","kind":"w","type":"bow","typeLabel":"弓","cat":"weapon","safe":6,"icon":34},{"id":35,"n":"闊劍","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":35},{"id":38,"n":"木棒","kind":"w","type":"blunt","typeLabel":"鈍器","cat":"weapon","safe":6,"icon":38},{"id":39,"n":"精靈匕首","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":null},{"id":40,"n":"歐西斯匕首","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":40},{"id":41,"n":"匕首","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":41},{"id":42,"n":"貝卡合金","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":42},{"id":44,"n":"法丘","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":null},{"id":45,"n":"弗萊爾","kind":"w","type":"blunt","typeLabel":"鈍器","cat":"weapon","safe":6,"icon":45},{"id":46,"n":"闊矛","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":null},{"id":47,"n":"吉薩","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":null},{"id":48,"n":"戟","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":48},{"id":54,"n":"槍","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":54},{"id":56,"n":"露西錘","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":null},{"id":57,"n":"戰錘","kind":"w","type":"blunt","typeLabel":"鈍器","cat":"weapon","safe":6,"icon":null},{"id":58,"n":"流星錘","kind":"w","type":"blunt","typeLabel":"鈍器","cat":"weapon","safe":6,"icon":58},{"id":61,"n":"帕提森","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":61},{"id":67,"n":"彎刀","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":67},{"id":69,"n":"侏儒鐵斧","kind":"w","type":"blunt","typeLabel":"鈍器","cat":"weapon","safe":6,"icon":69},{"id":70,"n":"精靈之矛","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":null},{"id":71,"n":"歐西斯之矛","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":71},{"id":72,"n":"小侏儒短劍","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":72},{"id":73,"n":"精靈短劍","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":73},{"id":74,"n":"歐西斯短劍","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":null},{"id":75,"n":"短劍","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":75},{"id":77,"n":"三叉戟","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":77},{"id":78,"n":"瑟魯基之劍","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":78},{"id":81,"n":"尤米弓","kind":"w","type":"bow","typeLabel":"弓","cat":"weapon","safe":6,"icon":81},{"id":123,"n":"紅騎士之劍","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":123},{"id":138,"n":"巨斧","kind":"w","type":"blunt","typeLabel":"鈍器","cat":"weapon","safe":6,"icon":138},{"id":141,"n":"侵略者之劍","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":141},{"id":142,"n":"骰子匕首","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":142},{"id":144,"n":"狂戰士斧","kind":"w","type":"blunt","typeLabel":"鈍器","cat":"weapon","safe":6,"icon":144},{"id":230,"n":"橡木魔法杖","kind":"w","type":"staff","typeLabel":"杖","cat":"weapon","safe":6,"icon":null},{"id":231,"n":"美基魔法杖","kind":"w","type":"staff","typeLabel":"杖","cat":"weapon","safe":6,"icon":null},{"id":232,"n":"巫術魔法杖","kind":"w","type":"staff","typeLabel":"杖","cat":"weapon","safe":6,"icon":null},{"id":233,"n":"力量魔法杖","kind":"w","type":"staff","typeLabel":"杖","cat":"weapon","safe":6,"icon":null},{"id":235,"n":"大馬士革刀","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":235},{"id":244,"n":"短弓","kind":"w","type":"bow","typeLabel":"弓","cat":"weapon","safe":6,"icon":244},{"id":268,"n":"潘的角","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"boneWeapon","safe":0,"icon":null},{"id":269,"n":"十字弓","kind":"w","type":"bow","typeLabel":"弓","cat":"weapon","safe":6,"icon":null},{"id":270,"n":"短劍的劍身","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":null},{"id":271,"n":"長劍的劍身","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":null},{"id":272,"n":"奧里哈魯根的劍身","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":272},{"id":274,"n":"細劍","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":null},{"id":276,"n":"覆上米索莉的角","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":276},{"id":277,"n":"覆上奧里哈魯根的角","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":null},{"id":278,"n":"鎖子甲破壞者","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":null},{"id":337,"n":"巨劍","kind":"w","type":"tohandsword","typeLabel":"雙手劍","cat":"weapon","safe":6,"icon":null},{"id":342,"n":"瑪那魔杖","kind":"w","type":"staff","typeLabel":"杖","cat":"weapon","safe":6,"icon":null},{"id":358,"n":"銀長劍","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":null},{"id":359,"n":"銀劍","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":null},{"id":360,"n":"銀斧","kind":"w","type":"blunt","typeLabel":"鈍器","cat":"weapon","safe":6,"icon":null},{"id":388,"n":"獵人之弓","kind":"w","type":"bow","typeLabel":"弓","cat":"weapon","safe":6,"icon":null},{"id":568,"n":"沙哈之弓","kind":"w","type":"bow","typeLabel":"弓","cat":"weapon","safe":6,"icon":null},{"id":711,"n":"水晶魔杖","kind":"w","type":"staff","typeLabel":"杖","cat":"weapon","safe":6,"icon":711},{"id":787,"n":"黑燄之劍","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":null},{"id":789,"n":"赤焰之弓","kind":"w","type":"bow","typeLabel":"弓","cat":"weapon","safe":6,"icon":null},{"id":790,"n":"赤焰之劍","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":null},{"id":1094,"n":"冰之女王魔杖","kind":"w","type":"staff","typeLabel":"杖","cat":"weapon","safe":6,"icon":1094},{"id":1095,"n":"惡魔魔杖","kind":"w","type":"staff","typeLabel":"杖","cat":"boneWeapon","safe":0,"icon":null},{"id":1096,"n":"巴風特魔杖","kind":"w","type":"staff","typeLabel":"杖","cat":"boneWeapon","safe":0,"icon":null},{"id":1097,"n":"巴列斯魔杖","kind":"w","type":"staff","typeLabel":"杖","cat":"boneWeapon","safe":0,"icon":null},{"id":1285,"n":"深紅長矛","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":null},{"id":2072,"n":"熾炎天使弓","kind":"w","type":"bow","typeLabel":"弓","cat":"weapon","safe":6,"icon":null},{"id":3019,"n":"酷寒之矛","kind":"w","type":"spear","typeLabel":"矛/槍","cat":"weapon","safe":6,"icon":null},{"id":3020,"n":"雷雨之劍","kind":"w","type":"sword","typeLabel":"劍","cat":"weapon","safe":6,"icon":null},{"id":87,"n":"精靈皮盔","kind":"a","type":"helm","typeLabel":"頭盔","cat":"fairyArmor","safe":6,"icon":87},{"id":88,"n":"歐西斯頭盔","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":null},{"id":89,"n":"侏儒鐵盔","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":89},{"id":90,"n":"頭盔","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":90},{"id":91,"n":"金屬盔甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":null},{"id":92,"n":"水晶盔甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":92},{"id":93,"n":"青銅盔甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":null},{"id":94,"n":"藤甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":null},{"id":95,"n":"皮甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":95},{"id":96,"n":"鏈甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":96},{"id":97,"n":"歐西斯鏈甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":97},{"id":98,"n":"鱗甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":null},{"id":99,"n":"銀釘皮甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":99},{"id":100,"n":"環甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":100},{"id":101,"n":"歐西斯環甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":101},{"id":102,"n":"小藤甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":102},{"id":103,"n":"皮夾克","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":103},{"id":104,"n":"T恤","kind":"a","type":"t","typeLabel":"T恤","cat":"armor","safe":4,"icon":104},{"id":105,"n":"精靈斗篷","kind":"a","type":"cloak","typeLabel":"斗篷","cat":"fairyArmor","safe":6,"icon":105},{"id":106,"n":"歐西斯斗篷","kind":"a","type":"cloak","typeLabel":"斗篷","cat":"armor","safe":4,"icon":106},{"id":107,"n":"侏儒斗篷","kind":"a","type":"cloak","typeLabel":"斗篷","cat":"armor","safe":4,"icon":null},{"id":109,"n":"保護者斗篷","kind":"a","type":"cloak","typeLabel":"斗篷","cat":"armor","safe":4,"icon":109},{"id":110,"n":"隱身斗篷","kind":"a","type":"cloak","typeLabel":"斗篷","cat":"armor","safe":4,"icon":110},{"id":111,"n":"抗魔法斗篷","kind":"a","type":"cloak","typeLabel":"斗篷","cat":"armor","safe":4,"icon":111},{"id":113,"n":"小盾牌","kind":"a","type":"shield","typeLabel":"盾牌","cat":"armor","safe":4,"icon":113},{"id":114,"n":"精靈盾牌","kind":"a","type":"shield","typeLabel":"盾牌","cat":"fairyArmor","safe":6,"icon":114},{"id":115,"n":"阿克海盾牌","kind":"a","type":"shield","typeLabel":"盾牌","cat":"armor","safe":4,"icon":null},{"id":117,"n":"大盾牌","kind":"a","type":"shield","typeLabel":"盾牌","cat":"armor","safe":4,"icon":117},{"id":118,"n":"侏儒圓盾","kind":"a","type":"shield","typeLabel":"盾牌","cat":"armor","safe":4,"icon":118},{"id":119,"n":"反射之盾","kind":"a","type":"shield","typeLabel":"盾牌","cat":"armor","safe":4,"icon":119},{"id":120,"n":"短統靴","kind":"a","type":"boot","typeLabel":"靴子","cat":"armor","safe":4,"icon":null},{"id":128,"n":"長靴","kind":"a","type":"boot","typeLabel":"靴子","cat":"armor","safe":4,"icon":null},{"id":129,"n":"手套","kind":"a","type":"glove","typeLabel":"手套","cat":"armor","safe":4,"icon":null},{"id":140,"n":"騎士面甲","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":140},{"id":145,"n":"伊娃之盾","kind":"a","type":"shield","typeLabel":"盾牌","cat":"armor","safe":4,"icon":null},{"id":155,"n":"塔盾","kind":"a","type":"shield","typeLabel":"盾牌","cat":"armor","safe":4,"icon":null},{"id":167,"n":"抗魔法鏈甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":167},{"id":229,"n":"抗魔法頭盔","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":null},{"id":234,"n":"綿質長袍","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":null},{"id":260,"n":"腕甲","kind":"a","type":"glove","typeLabel":"手套","cat":"armor","safe":4,"icon":260},{"id":263,"n":"木盾","kind":"a","type":"shield","typeLabel":"盾牌","cat":"armor","safe":4,"icon":null},{"id":266,"n":"木甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":null},{"id":267,"n":"精靈護胸金屬板","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"fairyArmor","safe":6,"icon":267},{"id":273,"n":"精靈金屬盔甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"fairyArmor","safe":6,"icon":null},{"id":275,"n":"艾爾穆的祝福","kind":"a","type":"helm","typeLabel":"頭盔","cat":"fairyArmor","safe":6,"icon":275},{"id":280,"n":"力量手套","kind":"a","type":"glove","typeLabel":"手套","cat":"armor","safe":4,"icon":null},{"id":281,"n":"精靈鏈甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"fairyArmor","safe":6,"icon":281},{"id":283,"n":"木製的夾克","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":null},{"id":289,"n":"銀騎士之盾","kind":"a","type":"shield","typeLabel":"盾牌","cat":"armor","safe":4,"icon":null},{"id":291,"n":"治癒魔法頭盔","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":291},{"id":292,"n":"敏捷魔法頭盔","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":292},{"id":293,"n":"力量魔法頭盔","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":293},{"id":317,"n":"皮帽子","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":317},{"id":318,"n":"銀釘皮帽","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":318},{"id":319,"n":"皮頭盔","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":319},{"id":320,"n":"骷髏頭盔","kind":"a","type":"helm","typeLabel":"頭盔","cat":"boneArmor","safe":0,"icon":320},{"id":321,"n":"皮涼鞋","kind":"a","type":"boot","typeLabel":"靴子","cat":"armor","safe":4,"icon":321},{"id":322,"n":"銀釘皮涼鞋","kind":"a","type":"boot","typeLabel":"靴子","cat":"armor","safe":4,"icon":322},{"id":323,"n":"皮長靴","kind":"a","type":"boot","typeLabel":"靴子","cat":"armor","safe":4,"icon":null},{"id":324,"n":"皮盾牌","kind":"a","type":"shield","typeLabel":"盾牌","cat":"armor","safe":4,"icon":324},{"id":325,"n":"銀釘皮盾","kind":"a","type":"shield","typeLabel":"盾牌","cat":"armor","safe":4,"icon":325},{"id":326,"n":"骷髏盾牌","kind":"a","type":"shield","typeLabel":"盾牌","cat":"boneArmor","safe":0,"icon":326},{"id":327,"n":"皮背心","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":327},{"id":328,"n":"皮盔甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":328},{"id":329,"n":"銀釘皮背心","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":329},{"id":330,"n":"硬皮背心","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":330},{"id":331,"n":"骷髏盔甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"boneArmor","safe":0,"icon":null},{"id":365,"n":"鋼鐵手套","kind":"a","type":"glove","typeLabel":"手套","cat":"armor","safe":4,"icon":null},{"id":366,"n":"鋼鐵頭盔","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":null},{"id":367,"n":"鋼鐵盾牌","kind":"a","type":"shield","typeLabel":"盾牌","cat":"armor","safe":4,"icon":null},{"id":368,"n":"鋼鐵長靴","kind":"a","type":"boot","typeLabel":"靴子","cat":"armor","safe":4,"icon":null},{"id":369,"n":"鋼鐵金屬盔甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":null},{"id":385,"n":"法師之帽","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":null},{"id":386,"n":"法師長袍","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":null},{"id":403,"n":"水龍鱗盔甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":null},{"id":404,"n":"地龍鱗盔甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":null},{"id":405,"n":"火龍鱗盔甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":null},{"id":406,"n":"風龍鱗盔甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":null},{"id":545,"n":"石製手套","kind":"a","type":"glove","typeLabel":"手套","cat":"armor","safe":4,"icon":null},{"id":547,"n":"水晶手套","kind":"a","type":"glove","typeLabel":"手套","cat":"armor","safe":4,"icon":547},{"id":551,"n":"深水長靴","kind":"a","type":"boot","typeLabel":"靴子","cat":"armor","safe":4,"icon":null},{"id":556,"n":"死亡騎士手套","kind":"a","type":"glove","typeLabel":"手套","cat":"armor","safe":4,"icon":556},{"id":557,"n":"死亡騎士盔甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":557},{"id":558,"n":"死亡騎士長靴","kind":"a","type":"boot","typeLabel":"靴子","cat":"armor","safe":4,"icon":null},{"id":559,"n":"死亡騎士頭盔","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":null},{"id":631,"n":"精靈敏捷頭盔","kind":"a","type":"helm","typeLabel":"頭盔","cat":"fairyArmor","safe":6,"icon":631},{"id":632,"n":"精靈體質頭盔","kind":"a","type":"helm","typeLabel":"頭盔","cat":"fairyArmor","safe":6,"icon":632},{"id":645,"n":"魔法能量之書","kind":"a","type":"shield","typeLabel":"盾牌","cat":"armor","safe":4,"icon":null},{"id":646,"n":"紅色斗篷","kind":"a","type":"cloak","typeLabel":"斗篷","cat":"armor","safe":4,"icon":null},{"id":652,"n":"紅騎士頭巾","kind":"a","type":"helm","typeLabel":"頭盔","cat":"fairyArmor","safe":6,"icon":null},{"id":666,"n":"紅騎士盾牌","kind":"a","type":"shield","typeLabel":"盾牌","cat":"fairyArmor","safe":6,"icon":null},{"id":705,"n":"精靈T恤","kind":"a","type":"t","typeLabel":"T恤","cat":"fairyArmor","safe":6,"icon":705},{"id":706,"n":"君主的威嚴","kind":"a","type":"cloak","typeLabel":"斗篷","cat":"armor","safe":4,"icon":706},{"id":768,"n":"保護者手套","kind":"a","type":"glove","typeLabel":"手套","cat":"armor","safe":4,"icon":null},{"id":769,"n":"瑪那斗篷","kind":"a","type":"cloak","typeLabel":"斗篷","cat":"armor","safe":4,"icon":null},{"id":788,"n":"瑪那水晶球","kind":"a","type":"shield","typeLabel":"盾牌","cat":"armor","safe":4,"icon":null},{"id":978,"n":"黑長者長袍","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":978},{"id":979,"n":"黑長者涼鞋","kind":"a","type":"boot","typeLabel":"靴子","cat":"armor","safe":4,"icon":979},{"id":980,"n":"巴土瑟之帽","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":980},{"id":981,"n":"卡士柏之帽","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":null},{"id":982,"n":"馬庫爾之帽","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":null},{"id":983,"n":"西瑪之帽","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":null},{"id":1007,"n":"克特手套","kind":"a","type":"glove","typeLabel":"手套","cat":"armor","safe":4,"icon":1007},{"id":1008,"n":"克特盔甲","kind":"a","type":"armor","typeLabel":"鎧甲","cat":"armor","safe":4,"icon":1008},{"id":1009,"n":"克特長靴","kind":"a","type":"boot","typeLabel":"靴子","cat":"armor","safe":4,"icon":1009},{"id":1010,"n":"克特頭盔","kind":"a","type":"helm","typeLabel":"頭盔","cat":"armor","safe":4,"icon":null},{"id":1489,"n":"藍海賊斗篷","kind":"a","type":"cloak","typeLabel":"斗篷","cat":"armor","safe":4,"icon":1489},{"id":12349,"n":"神意長靴","kind":"a","type":"boot","typeLabel":"靴子","cat":"armor","safe":4,"icon":null},{"id":12350,"n":"勇氣長靴","kind":"a","type":"boot","typeLabel":"靴子","cat":"armor","safe":4,"icon":null},{"id":12351,"n":"賽菲亞長靴","kind":"a","type":"boot","typeLabel":"靴子","cat":"armor","safe":4,"icon":null},{"id":12352,"n":"瑪那長靴","kind":"a","type":"boot","typeLabel":"靴子","cat":"armor","safe":4,"icon":null}];
+
+const KIND_LABEL={w:'武器',a:'防具'};
+const SCROLL_LABEL={white:'白卷',bless:'祝福卷',curse:'詛咒卷'};
+const W_TYPE_ORDER=['blunt','sword','tohandsword','bow','spear','staff'];
+const A_TYPE_ORDER=['helm','armor','t','cloak','shield','boot','glove'];
+
+const $=id=>document.getElementById(id);
+let S=JSON.parse(localStorage.getItem('enchsimV2')||'null')||{white:0,bless:0,curse:0,dead:0,best:0,graves:{},reports:[]};
+function saveS(){localStorage.setItem('enchsimV2',JSON.stringify(S));}
+
+let it=null;      // 目前裝備 {id,n,kind,type,typeLabel,cat,safe,icon,lv}
+let lastDef=null;  // 記住最近選過的裝備定義,給「再拿一件(同款)」用
+let busy=false;
+let pickerKind='w', pickerType=null;
+
+// 過安定幾階決定顯示色階(與安定值連動,不是寫死絕對等級)
+function tier(lv,safe){const over=lv-safe;if(over>=6)return 't4';if(over>=3)return 't3';if(over>=1)return 't2';return 't1';}
+
+function metaText(){
+  if(!it)return'';
+  let s=KIND_LABEL[it.kind]+'・'+it.typeLabel+'・安定+'+it.safe;
+  if(it.safe===0)s+='(無安全區,一開始就有風險)';
+  s+=it.lv>=it.safe?'・已過安定':'・安定內必成';
+  return s;
+}
+
+// 查表算「目前這階用這種卷軸」的官方總成功率(供%顯示與擲骰共用同一份資料,確保UI顯示的數字=實際擲骰用的數字)
+function lookup(scrollType){
+  if(!it)return null;
+  const t=PROB[it.cat]&&PROB[it.cat][scrollType];
+  if(!t)return null;
+  return t[it.lv]||null;
+}
+function successRate(scrollType){
+  const outs=lookup(scrollType);
+  if(!outs)return null;
+  return outs.filter(o=>o[0]==='ok').reduce((s,o)=>s+o[2],0);
+}
+
+function render(){
+  if(!it){$('itemName').textContent='—';$('itemName').className='t1';$('itemMeta').textContent='';}
+  else{$('itemName').textContent='+'+it.lv+' '+it.n;$('itemName').className=tier(it.lv,it.safe);$('itemMeta').textContent=metaText();}
+  $('sWhite').textContent=S.white;$('sBless').textContent=S.bless;$('sDead').textContent=S.dead;$('sBest').textContent='+'+S.best;
+  renderButtons();
+  $('btnAgain').disabled=!lastDef;
+}
+function renderButtons(){
+  ['white','bless','curse'].forEach(st=>{
+    const btn=$('btn'+st[0].toUpperCase()+st.slice(1));
+    const rate=it?successRate(st):null;
+    const pctEl=btn.querySelector('.pct');
+    if(rate===null){btn.disabled=true;pctEl.textContent=it?'不適用':'—';}
+    else{btn.disabled=false;pctEl.textContent=(rate>=99.99?'必成':(Math.round(rate*100)/100)+'%成功');}
+  });
+}
+
+function msg(t,c){const m=$('msg');m.textContent=t;m.className=c;}
+function log(html,cls){const d=document.createElement('div');d.className=cls||'';d.innerHTML=html;$('log').prepend(d);}
+function renderGrave(){const g=Object.entries(S.graves).map(([k,v])=>'🪦 '+k+' ×'+v).join('<br>');$('grave').innerHTML=g||'還沒有犧牲者。';}
+
+function selectItem(def){
+  it={id:def.id,n:def.n,kind:def.kind,type:def.type,typeLabel:def.typeLabel,cat:def.cat,safe:def.safe,icon:def.icon,lv:0};
+  lastDef=def;
+  msg('拿到了 '+it.n+'。衝吧。','info');
+  log('🆕 拿到 '+it.n+'(安定+'+it.safe+', '+KIND_LABEL[it.kind]+'/'+it.typeLabel+')','born');
+  document.querySelectorAll('.pickitem').forEach(el=>el.classList.toggle('sel',+el.dataset.id===def.id));
+  render();
+}
+
+// ===== 核心:照官方表擲骰,三種結果 =====
+function enchant(scrollType){
+  if(!it||busy)return;
+  const outs=lookup(scrollType);
+  if(!outs)return;
+  busy=true;
+  S[scrollType]++;
+  const opening={white:'卷軸捲了起來……',bless:'祝福的卷軸在發光……',curse:'詛咒的低語傳來……'};
+  msg(opening[scrollType],'info');
+  ['btnWhite','btnBless','btnCurse'].forEach(id=>$(id).disabled=true);
+  setTimeout(()=>{
+    const roll=Math.random()*100;
+    let acc=0,chosen=outs[outs.length-1];
+    for(const o of outs){acc+=o[2];if(roll<acc){chosen=o;break;}}
+    const box=$('itemBox'),fl=$('flash');
+    fl.className='';void fl.offsetWidth;
+    const [type,toLv]=chosen;
+    if(type==='ok'){
+      const jump=toLv-it.lv;
+      it.lv=toLv;
+      if(it.lv>S.best)S.best=it.lv;
+      if(scrollType==='curse'){
+        fl.className='ok';msg(it.n+' 被詛咒侵蝕 → +'+it.lv,'ok');
+        log('⚫ '+it.n+' 詛咒 → <b>+'+it.lv+'</b>','ok');
+      }else if(jump>=2){
+        fl.className='crit';msg('聖光爆發!! '+it.n+' 連跳'+jump+'級 → +'+it.lv,'crit');
+        log('✨ '+it.n+' 連跳 → <b>+'+it.lv+'</b>','crit');
+      }else{
+        const over=it.lv>it.safe;
+        fl.className=over?'crit':'ok';
+        msg(it.n+' 發出'+(over?'耀眼金光':'藍光')+' → +'+it.lv,over?'crit':'ok');
+        log((over?'🌟':'🔵')+' '+it.n+' → <b>+'+it.lv+'</b>'+(over?'(過安定!)':''),over?'crit':'ok');
+      }
+    }else if(type==='keep'){
+      fl.className='keep';
+      msg('卷軸化為粉末…… '+it.n+' 安然無恙(仍是 +'+it.lv+')','keep');
+      log('💨 '+it.n+' 卷軸耗損,裝備無事(+'+it.lv+')','keep');
+    }else{
+      S.dead++;box.classList.add('shake');fl.className='bad';
+      msg('碎裂——+'+it.lv+' '+it.n+' 蒸發了。','bad');
+      log('💥 +'+it.lv+' '+it.n+' <b>蒸發</b>','bad');
+      const k='+'+it.lv+' '+it.n;S.graves[k]=(S.graves[k]||0)+1;
+      renderGrave();
+      it=null;
+      setTimeout(()=>box.classList.remove('shake'),600);
+    }
+    saveS();render();
+    busy=false;
+  },900);
+}
+
+$('btnWhite').onclick=()=>enchant('white');
+$('btnBless').onclick=()=>enchant('bless');
+$('btnCurse').onclick=()=>enchant('curse');
+$('btnAgain').onclick=()=>{if(lastDef&&!busy)selectItem(lastDef);};
+
+// 彩蛋①換頻道:純視覺,機率完全不變
+$('btnChannel').onclick=()=>{
+  if(busy)return;
+  const box=$('itemBox');
+  box.classList.add('channelFlip');
+  msg('正在換頻道……手氣重新整理中','info');
+  setTimeout(()=>{
+    box.classList.remove('channelFlip');
+    msg(it?'頻道換好了,感覺手氣變好了(其實機率沒變)':'選一件裝備開始','info');
+  },700);
+};
+
+// 彩蛋②深夜加成曖昧提示:純文字,機率完全不變
+(function(){
+  const h=new Date().getHours();
+  if(h>=0&&h<5){$('nightHint').textContent='🌙 深夜衝裝…加成?(傳說,機率沒有變,別太迷信)';$('nightHint').style.display='block';}
+})();
+
+// 譯名回報:先不擋上線,記到 localStorage 供之後匯出校對
+function renderReports(){$('reportList').textContent=S.reports.length?'已回報:'+S.reports.join('、'):'尚未回報任何譯名問題。';}
+$('btnReport').onclick=()=>{
+  if(!it)return;
+  if(!S.reports.includes(it.n)){S.reports.push(it.n);saveS();}
+  renderReports();
+  msg('已記錄「'+it.n+'」,謝謝回報!','info');
+};
+
+// ===== 裝備選擇器 =====
+function itemCardHtml(x){
+  const img=x.icon?'<img src="lineage-icons/'+x.icon+'.png" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">':'';
+  const fb='<div class="ifallback" style="'+(x.icon?'display:none':'display:flex')+'">'+x.n[0]+'</div>';
+  return '<div class="pickitem'+(it&&it.id===x.id?' sel':'')+'" data-id="'+x.id+'">'+img+fb+'<div class="pname">'+x.n+'</div><div class="psafe">安定+'+x.safe+'</div></div>';
+}
+function renderPicker(){
+  const kindItems=ITEMS.filter(x=>x.kind===pickerKind);
+  const order=pickerKind==='w'?W_TYPE_ORDER:A_TYPE_ORDER;
+  const types=order.filter(t=>kindItems.some(x=>x.type===t));
+  let chips='<button class="chip'+(pickerType===null?' active':'')+'" data-type="">全部('+kindItems.length+')</button>';
+  for(const t of types){
+    const inCat=kindItems.filter(x=>x.type===t);
+    chips+='<button class="chip'+(pickerType===t?' active':'')+'" data-type="'+t+'">'+inCat[0].typeLabel+'('+inCat.length+')</button>';
+  }
+  $('typeChips').innerHTML=chips;
+  const shown=pickerType?kindItems.filter(x=>x.type===pickerType):kindItems;
+  $('itemGrid').innerHTML=shown.map(itemCardHtml).join('');
+}
+document.querySelectorAll('.kindTab').forEach(b=>b.onclick=()=>{
+  pickerKind=b.dataset.kind;pickerType=null;
+  document.querySelectorAll('.kindTab').forEach(x=>x.classList.toggle('active',x===b));
+  renderPicker();
+});
+$('typeChips').addEventListener('click',e=>{
+  const b=e.target.closest('.chip');if(!b)return;
+  pickerType=b.dataset.type||null;
+  renderPicker();
+});
+$('itemGrid').addEventListener('click',e=>{
+  const c=e.target.closest('.pickitem');if(!c)return;
+  const def=ITEMS.find(x=>x.id===+c.dataset.id);
+  if(def)selectItem(def);
+});
+
+// ===== 初始化 =====
+renderReports();
+renderGrave();
+renderPicker();
+const defaultDef=ITEMS.find(x=>x.id===2); // 武士刀,平民神器,當第一次進來的預設裝備
+if(defaultDef)selectItem(defaultDef);
+render();
+</script></body></html>
